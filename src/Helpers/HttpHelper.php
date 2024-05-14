@@ -202,25 +202,31 @@ class HttpHelper
     {
         if (property_exists($jsonDecodedObject,"error"))
         {
-            $message = $jsonDecodedObject->error->message;
-            if (!is_object($message))
+            if (!is_object($jsonDecodedObject->error))
             {
-                return $message;
+                return $jsonDecodedObject->error;
             }
-            else
-            {
-                $messageArray = [];
-                foreach ($message as $key => $value)
+            if (property_exists($jsonDecodedObject->error, "message")) {
+                $message = $jsonDecodedObject->error->message;
+                if (!is_object($message))
                 {
-                    if (is_array($value)) {
-                        foreach ($value as $subValue) {
-                            $messageArray[] = $subValue;
-                        }
-                    } else {
-                        $messageArray[] = $value;
-                    }
+                    return $message;
                 }
-                return implode(", ",$messageArray);
+                else
+                {
+                    $messageArray = [];
+                    foreach ($message as $key => $value)
+                    {
+                        if (is_array($value)) {
+                            foreach ($value as $subValue) {
+                                $messageArray[] = $subValue;
+                            }
+                        } else {
+                            $messageArray[] = $value;
+                        }
+                    }
+                    return implode(", ",$messageArray);
+                }
             }
         }
         return null;
