@@ -55,6 +55,17 @@ class AccountBillingController
     }
 
     /**
+     * Get a list of invoices with remaining due for the account
+     * @param $accountID
+     * @return mixed
+     * @throws ApiException
+     */
+    public function getInvoicesOutstanding($accountID)
+    {
+        return $this->httpHelper->get("accounts/" . intval($accountID) . "/invoices/outstanding");
+    }
+
+    /**
      * Get a list of debits for the account (see https://sonar.software/apidoc/#api-Account_Transactions-GetAccountDebits)
      * @param $accountID
      * @param int $page

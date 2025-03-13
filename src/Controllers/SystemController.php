@@ -29,4 +29,14 @@ class SystemController
     {
         return $this->httpHelper->get("system/services/" . intval($serviceID), $page);
     }
+
+    /**
+     * Get a list of invoices with remaining due for the account
+     * @return mixed
+     * @throws ApiException
+     */
+    public function getPrimaryEnabledCreditCardProcessor()
+    {
+        return $this->httpHelper->get("system/credit_card_processors/primary_enabled");
+    }
 }
