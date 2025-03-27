@@ -30,4 +30,15 @@ class AccountController
     {
         return $this->httpHelper->get("accounts/" . intval($accountID));
     }
+
+    /**
+     * Get a credit card processor related to this accounts companies.
+     * @param $accountID
+     * @return mixed
+     * @throws ApiException
+     */
+    public function getEnabledCreditCardProcessor($accountID)
+    {
+        return $this->httpHelper->get("accounts/credit_card_processors/" . intval($accountID) . "/enabled");
+    }
 }
