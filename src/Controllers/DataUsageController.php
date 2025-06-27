@@ -66,11 +66,18 @@ class DataUsageController
      * This will throw an ApiException if the user does not have a usage based billing policy with top offs enabled.
      * @param $accountID
      * @param int $quantity
+     * @param int $accountServiceId
      * @return mixed
      * @throws \SonarSoftware\CustomerPortalFramework\Exceptions\ApiException
      */
-    public function purchaseTopOff($accountID, $quantity = 1)
+    public function purchaseTopOff($accountID, $quantity = 1, ?int $accountServiceId = null)
     {
-        return $this->httpHelper->post("accounts/" . intval($accountID) . "/top_off", ['quantity' => intval($quantity)]);
+        $params = [
+            "quantity" => intval($quantity),
+        ];
+        if (isset($accountServiceId)) {
+            $params["account_service_id"] = $accountServiceId;
+        }
+        return $this->httpHelper->post("accounts/" . intval($accountID) . "/top_off", $params);
     }
 }
