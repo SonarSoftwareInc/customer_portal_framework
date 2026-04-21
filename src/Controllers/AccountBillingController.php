@@ -201,19 +201,26 @@ class AccountBillingController
                     return $cardResult;
                 }
 
-                $paymentMethodId = property_exists($cardResult, 'payment_methods') && property_exists($cardResult->payment_methods, 'entities') ? $cardResult->payment_methods->entities[0]->id ?? null : null;
+                // Extract tokenized card from response
+                $paymentMethods = property_exists($cardResult, 'payment_methods') && property_exists($cardResult->payment_methods, 'entities')
+                    ? $cardResult->payment_methods->entities
+                    : [];
 
-                if (empty($paymentMethodId)) {
+                if (empty($paymentMethods)) {
                     return (object)[
                         'success' => false,
-                        'message' => 'Failed to retrieve payment method ID after card creation',
+                        'message' => 'Failed to retrieve payment method after card creation',
                     ];
                 }
 
-                $result = $this->makePaymentUsingExistingPaymentMethod(
+                $tokenizedCard = $this->getTokenizedCard($paymentMethods[0]);
+
+                // Use tokenized payment method for the actual payment
+                $result = $this->makeTokenizedCreditCardPayment(
                     $accountID,
-                    $paymentMethodId,
+                    $tokenizedCard,
                     $amount,
+                    false,
                     $payment_tracker_id
                 );
 
@@ -437,5 +444,43 @@ class AccountBillingController
     public function deletePaymentMethodByID($accountID, $paymentMethodID)
     {
         return $this->httpHelper->delete("/accounts/" . intval($accountID) . "/payment_methods/" . intval($paymentMethodID));
+    }
+
+    /**
+     * @param $paymentMethods
+     * @return TokenizedCreditCard
+     */
+    public function getTokenizedCard($paymentMethods): TokenizedCreditCard
+    {
+        $paymentMethod = $paymentMethods;
+
+        // Create a TokenizedCreditCard from the saved payment method
+        $tokenizedCard = new TokenizedCreditCard(
+            $paymentMethod->token ?? null,
+            $paymentMethod->credit_card_type ?? null,
+            $paymentMethod->expiration_month ?? null,
+            $paymentMethod->expiration_year ?? null,
+            $paymentMethod->masked_number ?? null,
+            $paymentMethod->name_on_card ?? null,
+            $paymentMethod->customer_profile_id ?? null
+        );
+
+        // Set address fields if available
+        if (property_exists($paymentMethod, 'line1')) {
+            $tokenizedCard->setLine1($paymentMethod->line1);
+        }
+        if (property_exists($paymentMethod, 'city')) {
+            $tokenizedCard->setCity($paymentMethod->city);
+        }
+        if (property_exists($paymentMethod, 'state')) {
+            $tokenizedCard->setState($paymentMethod->state);
+        }
+        if (property_exists($paymentMethod, 'zip')) {
+            $tokenizedCard->setZip($paymentMethod->zip);
+        }
+        if (property_exists($paymentMethod, 'country')) {
+            $tokenizedCard->setCountry($paymentMethod->country);
+        }
+        return $tokenizedCard;
     }
 }
