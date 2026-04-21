@@ -196,15 +196,11 @@ class AccountBillingController
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
-                ray('Card created', $cardResult);
-
-                $paymentMethodId = $cardResult->id;
-                ray('Using payment method ID for payment', $paymentMethodId);
 
                 // Use the same payment endpoint as existing payment methods
                 $result = $this->makePaymentUsingExistingPaymentMethod(
                     $accountID,
-                    $paymentMethodId,
+                    $cardResult->id,
                     $amount,
                     $payment_tracker_id
                 );
@@ -275,7 +271,6 @@ class AccountBillingController
             ]
         );
 
-        ray($result);
         return $result;
     }
 
@@ -308,7 +303,6 @@ class AccountBillingController
      */
     public function createCreditCard($accountID, CreditCard $creditCard, $auto = true)
     {
-        ray($creditCard);
         return $this->httpHelper->post("/accounts/" . intval($accountID) . "/payment_methods", [
             'type' => 'credit card',
             'account_number' => $creditCard->getNumber(),
@@ -431,41 +425,5 @@ class AccountBillingController
     public function deletePaymentMethodByID($accountID, $paymentMethodID)
     {
         return $this->httpHelper->delete("/accounts/" . intval($accountID) . "/payment_methods/" . intval($paymentMethodID));
-    }
-
-    /**
-     * @param $paymentMethods
-     * @return TokenizedCreditCard
-     */
-    public function getTokenizedCard($paymentMethods): TokenizedCreditCard
-    {
-        $paymentMethod = $paymentMethods;
-
-        ray('Portal: Payment method structure')->dump(get_object_vars($paymentMethod));
-
-        // Create a TokenizedCreditCard from the saved payment method using array constructor
-        $tokenizedCard = new TokenizedCreditCard([
-            'customer_id' => $paymentMethod->customer_profile_id ?? null,
-            'token' => $paymentMethod->token ?? null,
-            'identifier' => $paymentMethod->masked_number ?? $paymentMethod->identifier ?? null,
-            'expiration_month' => $paymentMethod->expiration_month ?? null,
-            'expiration_year' => $paymentMethod->expiration_year ?? null,
-            'line1' => $paymentMethod->line1 ?? null,
-            'city' => $paymentMethod->city ?? null,
-            'state' => $paymentMethod->state ?? null,
-            'zip' => $paymentMethod->zip ?? null,
-            'country' => $paymentMethod->country ?? null,
-            'name' => $paymentMethod->name_on_card ?? $paymentMethod->name_on_account ?? null,
-            'card_type' => $paymentMethod->credit_card_type ?? $paymentMethod->card_type ?? null,
-        ]);
-
-        ray('Portal: TokenizedCreditCard created')->dump([
-            'token' => $tokenizedCard->getToken(),
-            'cardType' => $tokenizedCard->getCardType(),
-            'customerId' => $tokenizedCard->getCustomerId(),
-            'identifier' => $tokenizedCard->getIdentifier(),
-        ]);
-
-        return $tokenizedCard;
     }
 }
