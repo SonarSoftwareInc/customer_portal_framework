@@ -193,13 +193,12 @@ class AccountBillingController
      */
     public function makeCreditCardPayment($accountID, CreditCard $creditCard, $amount, $saveAndMakeAuto = false, $payment_tracker_id = null)
     {
-        ray($saveAndMakeAuto);
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
                 ray('Card created', $cardResult);
 
-                if (empty($cardResult) || !property_exists($cardResult, 'payment_methods')) {
+                if (empty($cardResult)) {
                     return (object)[
                         'success' => false,
                         'message' => 'Failed to create payment method',
