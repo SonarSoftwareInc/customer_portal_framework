@@ -197,11 +197,11 @@ class AccountBillingController
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
 
-                if (!isset($cardResult->success) || $cardResult->success !== true) {
+                if (empty($cardResult) || !property_exists($cardResult, 'success') || $cardResult->success !== true) {
                     return $cardResult;
                 }
 
-                $paymentMethodId = $cardResult->payment_methods->entities[0]->id ?? null;
+                $paymentMethodId = property_exists($cardResult, 'payment_methods') && property_exists($cardResult->payment_methods, 'entities') ? $cardResult->payment_methods->entities[0]->id ?? null : null;
 
                 if (empty($paymentMethodId)) {
                     return (object)[
