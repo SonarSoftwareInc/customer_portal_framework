@@ -197,32 +197,32 @@ class AccountBillingController
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
-                ray($cardResult);
+                ray('Card created', $cardResult);
 
-                if (empty($cardResult) || !property_exists($cardResult, 'success') || $cardResult->success !== true) {
-                    return $cardResult;
+                if (empty($cardResult) || !property_exists($cardResult, 'payment_methods')) {
+                    return (object)[
+                        'success' => false,
+                        'message' => 'Failed to create payment method',
+                    ];
                 }
 
-                // Extract tokenized card from response
-                $paymentMethods = property_exists($cardResult, 'payment_methods') && property_exists($cardResult->payment_methods, 'entities')
-                    ? $cardResult->payment_methods->entities
-                    : [];
+                $paymentMethod = $cardResult->payment_methods;
 
-                if (empty($paymentMethods)) {
+                if (empty($paymentMethod) || !property_exists($paymentMethod, 'id')) {
                     return (object)[
                         'success' => false,
                         'message' => 'Failed to retrieve payment method after card creation',
                     ];
                 }
 
-                $tokenizedCard = $this->getTokenizedCard($paymentMethods[0]);
+                $paymentMethodId = $paymentMethod->id;
+                ray('Using payment method ID for payment', $paymentMethodId);
 
-                // Use tokenized payment method for the actual payment
-                $result = $this->makeTokenizedCreditCardPayment(
+                // Use the same payment endpoint as existing payment methods
+                $result = $this->makePaymentUsingExistingPaymentMethod(
                     $accountID,
-                    $tokenizedCard,
+                    $paymentMethodId,
                     $amount,
-                    false,
                     $payment_tracker_id
                 );
 
