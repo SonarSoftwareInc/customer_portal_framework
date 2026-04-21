@@ -325,6 +325,7 @@ class AccountBillingController
      */
     public function createCreditCard($accountID, CreditCard $creditCard, $auto = true)
     {
+        ray($creditCard);
         return $this->httpHelper->post("/accounts/" . intval($accountID) . "/payment_methods", [
             'type' => 'credit card',
             'account_number' => $creditCard->getNumber(),
