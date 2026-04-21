@@ -198,23 +198,7 @@ class AccountBillingController
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
                 ray('Card created', $cardResult);
 
-                if (empty($cardResult)) {
-                    return (object)[
-                        'success' => false,
-                        'message' => 'Failed to create payment method',
-                    ];
-                }
-
-                $paymentMethod = $cardResult->payment_methods;
-
-                if (empty($paymentMethod) || !property_exists($paymentMethod, 'id')) {
-                    return (object)[
-                        'success' => false,
-                        'message' => 'Failed to retrieve payment method after card creation',
-                    ];
-                }
-
-                $paymentMethodId = $paymentMethod->id;
+                $paymentMethodId = $cardResult->id;
                 ray('Using payment method ID for payment', $paymentMethodId);
 
                 // Use the same payment endpoint as existing payment methods
