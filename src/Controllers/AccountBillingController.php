@@ -193,9 +193,11 @@ class AccountBillingController
      */
     public function makeCreditCardPayment($accountID, CreditCard $creditCard, $amount, $saveAndMakeAuto = false, $payment_tracker_id = null)
     {
+        ray($saveAndMakeAuto);
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
+                ray($cardResult);
 
                 if (empty($cardResult) || !property_exists($cardResult, 'success') || $cardResult->success !== true) {
                     return $cardResult;
@@ -290,6 +292,7 @@ class AccountBillingController
             ]
         );
 
+        ray($result);
         return $result;
     }
 
