@@ -182,8 +182,7 @@ class AccountBillingController
      */
 
     /**
-     * Make a one time payment with a credit card and, optionally, save it as a future automatic payment method.
-     * AB#41462 Fix: When saveAndMakeAuto is true, the card is created FIRST, then payment is made with it.
+     * When saveAndMakeAuto is true, the card is created FIRST, then payment is made with it. Otherwise, card is handled as a one-time payment and not saved.
      * @param $accountID - The account ID in Sonar
      * @param CreditCard $creditCard - A CreditCard object
      * @param $amount - The amount in the currency used in Sonar as a float
@@ -234,7 +233,9 @@ class AccountBillingController
     }
 
     /**
-     * Make a payment with a tokenized card (see https://sonar.software/apidoc/index.html#api-Account_Transactions-PostAccountOneTimeTokenizedCreditCardPayment)
+     * Make a payment with a tokenized cardand, optionally, save it as
+     * a future automatic payment method. This should not be used to pay with
+     * an existing payment method.
      * @param $accountID
      * @param TokenizedCreditCard $creditCard
      * @param $amount
