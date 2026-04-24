@@ -197,7 +197,6 @@ class AccountBillingController
      * @param bool $saveAndMakeAuto - If this is true, save the card if it successfully runs
      * @param $payment_tracker_id - Optional tracker ID for the payment transaction
      * @return mixed
-     * @throws ApiException
      */
     public function makeCreditCardPayment($accountID, CreditCard $creditCard, $amount, $saveAndMakeAuto = false, $payment_tracker_id = null)
     {
@@ -213,19 +212,13 @@ class AccountBillingController
                     $payment_tracker_id
                 );
 
+                $result->success = true;
+                $result->message = "Card stored with Autopay and Payment successful";
                 return $result;
             } catch (Exception $e) {
-                if (isset($cardResult)) {
-                    // Card save succeeded at line 199; payment failed at line 202
-                    $message = "Card saved but payment failed with " . $e->getMessage();
-                } else {
-                    // Card save failed at line 199
-                    $message = "Payment processing failed: " . $e->getMessage();
-                }
-
                 return (object)[
                     'success' => false,
-                    'message' => $message,
+                    'message' => isset($cardResult) ? "Card with autopay stored but payment failed with \"" . $e->getMessage() . '"' : "",
                 ];
             }
         } else {
@@ -245,6 +238,8 @@ class AccountBillingController
                 'email_payment_receipt' => true,
             ]);
 
+            $result->success = true;
+            $result->message = "One time payment successful";
             return $result;
         }
     }
