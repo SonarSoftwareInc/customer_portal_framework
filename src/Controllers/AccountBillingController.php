@@ -182,11 +182,13 @@ class AccountBillingController
      */
 
     /**
-     * When saveAndMakeAuto is true, the card is created FIRST, then payment is made with it. Otherwise, card is handled as a one-time payment and not saved.
-     * @param $accountID - The account ID in Sonar
-     * @param CreditCard $creditCard - A CreditCard object
-     * @param $amount - The amount in the currency used in Sonar as a float
-     * @param bool $saveAndMakeAuto - If true, save the card FIRST with autopay, then pay with it
+     * Make a one time payment with a tokenized card and, optionally, save it as
+     * * a future automatic payment method. This should not be used to pay with
+     * * an existing payment method.
+     * * @param $accountID - The account ID in Sonar
+     * * @param TokenizedCreditCard $creditCard - A TokenizedCreditCard object
+     * * @param $amount - The amount in the currency used in Sonar as a float
+     * * @param bool $saveAndMakeAuto - If this is true, save the card if it successfully runs
      * @return mixed
      * @throws ApiException
      */
@@ -206,9 +208,17 @@ class AccountBillingController
 
                 return $result;
             } catch (Exception $e) {
+                if (isset($cardResult)) {
+                    // Card save succeeded at line 199; payment failed at line 202
+                    $message = "Card saved but payment failed with " . $e->getMessage();
+                } else {
+                    // Card save failed at line 199
+                    $message = "Payment processing failed: " . $e->getMessage();
+                }
+
                 return (object)[
                     'success' => false,
-                    'message' => 'Payment processing failed: ' . $e->getMessage(),
+                    'message' => $message,
                 ];
             }
         } else {
@@ -233,9 +243,7 @@ class AccountBillingController
     }
 
     /**
-     * Make a payment with a tokenized cardand, optionally, save it as
-     * a future automatic payment method. This should not be used to pay with
-     * an existing payment method.
+     * Make a payment with a tokenized card (see https://sonar.software/apidoc/index.html#api-Account_Transactions-PostAccountOneTimeTokenizedCreditCardPayment)
      * @param $accountID
      * @param TokenizedCreditCard $creditCard
      * @param $amount
