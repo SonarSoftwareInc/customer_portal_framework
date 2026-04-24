@@ -182,13 +182,20 @@ class AccountBillingController
      */
 
     /**
-     * Make a one time payment with a tokenized card and, optionally, save it as
-     * * a future automatic payment method. This should not be used to pay with
-     * * an existing payment method.
-     * * @param $accountID - The account ID in Sonar
-     * * @param TokenizedCreditCard $creditCard - A TokenizedCreditCard object
-     * * @param $amount - The amount in the currency used in Sonar as a float
-     * * @param bool $saveAndMakeAuto - If this is true, save the card if it successfully runs
+     * Make a one time payment with a credit card and, optionally, save it as
+     * a future automatic payment method. This should not be used to pay with
+     * an existing payment method.
+     *
+     * Note: Return type varies based on saveAndMakeAuto flag:
+     * - saveAndMakeAuto=true: Returns response from /transactions/payments endpoint
+     * - saveAndMakeAuto=false: Returns response from /transactions/one_time_credit_card_payment endpoint
+     * On failure: Returns {success: false, message: string}
+     *
+     * @param $accountID - The account ID in Sonar
+     * @param CreditCard $creditCard - A CreditCard object
+     * @param $amount - The amount in the currency used in Sonar as a float
+     * @param bool $saveAndMakeAuto - If this is true, save the card if it successfully runs
+     * @param $payment_tracker_id - Optional tracker ID for the payment transaction
      * @return mixed
      * @throws ApiException
      */
