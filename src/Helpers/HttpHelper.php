@@ -110,6 +110,28 @@ class HttpHelper
     }
 
     /**
+     * Fetch every page of a paginated GET endpoint and return the combined data.
+     *
+     * @param $endpoint
+     * @return array
+     * @throws ApiException
+     */
+    public function getAll($endpoint)
+    {
+        $results = [];
+        $page = 1;
+        do {
+            $pageResults = $this->get($endpoint, $page);
+            foreach ($pageResults as $pageResult) {
+                $results[] = $pageResult;
+            }
+            $page++;
+        } while (!empty($pageResults));
+
+        return $results;
+    }
+
+    /**
      * @param $endpoint
      * @param $array - Array of data to be JSON encoded
      * @return mixed
