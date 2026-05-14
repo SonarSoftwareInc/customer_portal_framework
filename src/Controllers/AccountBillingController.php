@@ -261,28 +261,52 @@ class AccountBillingController
         $payment_tracker_id = null
     )
     {
-        $result = $this->httpHelper->post(
-            "/accounts/" . intval($accountID) . "/transactions/one_time_tokenized_credit_card_payment",
-            [
-                'customer_profile_id' => $creditCard->getCustomerId(),
-                'credit_card_type' => strtoupper($creditCard->getCardType()),
-                'name_on_card' => $creditCard->getName(),
-                'token' => $creditCard->getToken(),
-                'expiration_month' => $creditCard->getExpirationMonth(),
-                'expiration_year' => $creditCard->getExpirationYear(),
-                'masked_number' => $creditCard->getIdentifier(),
-                'line1' => $creditCard->getLine1(),
-                'city' => $creditCard->getCity(),
-                'state' => $creditCard->getState(),
-                'zip' => $creditCard->getZip(),
-                'country' => $creditCard->getCountry(),
-                'amount' => trim($amount),
-                'payment_tracker_id' => $payment_tracker_id,
-                'email_payment_receipt' => true,
-            ]
-        );
+        if ($saveAndMakeAuto === true) {
+            try {
+                $cardResult = $this->createTokenizedCreditCard($accountID, $creditCard, true);
 
-        return $result;
+                $result = $this->makePaymentUsingExistingPaymentMethod(
+                    $accountID,
+                    $cardResult->id,
+                    $amount,
+                    $payment_tracker_id
+                );
+
+                $result->success = true;
+                $result->message = "Card stored with Autopay and Payment successful";
+                return $result;
+            } catch (Exception $e) {
+                return (object)[
+                    'success' => false,
+                    'message' => isset($cardResult) ? "Card with autopay stored but payment failed with \"" . $e->getMessage() . '"' : "",
+                ];
+            }
+        } else {
+            $result = $this->httpHelper->post(
+                "/accounts/" . intval($accountID) . "/transactions/one_time_tokenized_credit_card_payment",
+                [
+                    'customer_profile_id' => $creditCard->getCustomerId(),
+                    'credit_card_type' => strtoupper($creditCard->getCardType()),
+                    'name_on_card' => $creditCard->getName(),
+                    'token' => $creditCard->getToken(),
+                    'expiration_month' => $creditCard->getExpirationMonth(),
+                    'expiration_year' => $creditCard->getExpirationYear(),
+                    'masked_number' => $creditCard->getIdentifier(),
+                    'line1' => $creditCard->getLine1(),
+                    'city' => $creditCard->getCity(),
+                    'state' => $creditCard->getState(),
+                    'zip' => $creditCard->getZip(),
+                    'country' => $creditCard->getCountry(),
+                    'amount' => trim($amount),
+                    'payment_tracker_id' => $payment_tracker_id,
+                    'email_payment_receipt' => true,
+                ]
+            );
+
+            $result->success = true;
+            $result->message = "One time payment successful";
+            return $result;
+        }
     }
 
     /**
