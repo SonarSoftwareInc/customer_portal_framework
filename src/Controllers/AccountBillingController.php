@@ -218,7 +218,9 @@ class AccountBillingController
             } catch (Exception $e) {
                 return (object)[
                     'success' => false,
-                    'message' => isset($cardResult) ? "Card with autopay stored but payment failed with \"" . $e->getMessage() . '"' : "",
+                    'message' => isset($cardResult)
+                        ? "Card with autopay stored but payment failed: " . $e->getMessage()
+                        : "Card with autopay storage failed: " . $e->getMessage(),
                 ];
             }
         } else {
@@ -249,7 +251,8 @@ class AccountBillingController
      * @param $accountID
      * @param TokenizedCreditCard $creditCard
      * @param $amount
-     * @param bool $saveAndMakeAuto - Not used for tokenized payments
+     * @param bool $saveAndMakeAuto - If true, saves the card before charging; if false, charges one-time only
+     * @param $payment_tracker_id
      * @return mixed
      * @throws ApiException
      */
@@ -278,7 +281,9 @@ class AccountBillingController
             } catch (Exception $e) {
                 return (object)[
                     'success' => false,
-                    'message' => isset($cardResult) ? "Card with autopay stored but payment failed with \"" . $e->getMessage() . '"' : "",
+                    'message' => isset($cardResult)
+                        ? "Card with autopay stored but payment failed: " . $e->getMessage()
+                        : "Card with autopay storage failed: " . $e->getMessage(),
                 ];
             }
         } else {
