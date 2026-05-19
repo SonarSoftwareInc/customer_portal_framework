@@ -203,6 +203,9 @@ class AccountBillingController
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
+                if ($cardResult->success !== true) {
+                    throw new Exception($cardResult->message);
+                }
 
                 // Use the same payment endpoint as existing payment methods
                 $result = $this->makePaymentUsingExistingPaymentMethod(
@@ -211,14 +214,15 @@ class AccountBillingController
                     $amount,
                     $payment_tracker_id
                 );
+                if ($result->success !== true) {
+                    throw new Exception($result->message);
+                }
 
-                $result->success = true;
-                $result->message = "Card stored with Autopay and Payment successful";
                 return $result;
             } catch (Exception $e) {
                 return (object)[
                     'success' => false,
-                    'message' => isset($cardResult)
+                    'message' => (isset($cardResult) && $cardResult->success === true)
                         ? "Card with autopay stored but payment failed: " . $e->getMessage()
                         : "Card with autopay storage failed: " . $e->getMessage(),
                 ];
@@ -267,6 +271,9 @@ class AccountBillingController
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createTokenizedCreditCard($accountID, $creditCard, true);
+                if ($cardResult->success !== true) {
+                    throw new Exception($cardResult->message);
+                }
 
                 $result = $this->makePaymentUsingExistingPaymentMethod(
                     $accountID,
@@ -274,14 +281,15 @@ class AccountBillingController
                     $amount,
                     $payment_tracker_id
                 );
+                if ($result->success !== true) {
+                    throw new Exception($result->message);
+                }
 
-                $result->success = true;
-                $result->message = "Card stored with Autopay and Payment successful";
                 return $result;
             } catch (Exception $e) {
                 return (object)[
                     'success' => false,
-                    'message' => isset($cardResult)
+                    'message' => (isset($cardResult) && $cardResult->success === true)
                         ? "Card with autopay stored but payment failed: " . $e->getMessage()
                         : "Card with autopay storage failed: " . $e->getMessage(),
                 ];
