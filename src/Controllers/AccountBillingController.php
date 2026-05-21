@@ -204,7 +204,7 @@ class AccountBillingController
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
                 if ($cardResult->success !== true) {
-                    throw new Exception($cardResult->message);
+                    return $cardResult;
                 }
 
                 // Use the same payment endpoint as existing payment methods
@@ -214,10 +214,6 @@ class AccountBillingController
                     $amount,
                     $payment_tracker_id
                 );
-                if ($result->success !== true) {
-                    throw new Exception($result->message);
-                }
-
                 return $result;
             } catch (Exception $e) {
                 return (object)[
@@ -243,9 +239,6 @@ class AccountBillingController
                 'payment_tracker_id' => $payment_tracker_id,
                 'email_payment_receipt' => true,
             ]);
-
-            $result->success = true;
-            $result->message = "One time payment successful";
             return $result;
         }
     }
@@ -272,7 +265,7 @@ class AccountBillingController
             try {
                 $cardResult = $this->createTokenizedCreditCard($accountID, $creditCard, true);
                 if ($cardResult->success !== true) {
-                    throw new Exception($cardResult->message);
+                    return $cardResult;
                 }
 
                 $result = $this->makePaymentUsingExistingPaymentMethod(
@@ -281,10 +274,6 @@ class AccountBillingController
                     $amount,
                     $payment_tracker_id
                 );
-                if ($result->success !== true) {
-                    throw new Exception($result->message);
-                }
-
                 return $result;
             } catch (Exception $e) {
                 return (object)[
@@ -315,9 +304,6 @@ class AccountBillingController
                     'email_payment_receipt' => true,
                 ]
             );
-
-            $result->success = true;
-            $result->message = "One time payment successful";
             return $result;
         }
     }
