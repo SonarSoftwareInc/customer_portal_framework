@@ -203,8 +203,8 @@ class AccountBillingController
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createCreditCard($accountID, $creditCard, true);
-                if ($cardResult->success !== true) {
-                    return $cardResult;
+                if (!isset($cardResult->id)) {
+                    return (object)['success' => false, 'message' => 'Card creation failed'];
                 }
 
                 // Use the same payment endpoint as existing payment methods
@@ -218,7 +218,7 @@ class AccountBillingController
             } catch (Exception $e) {
                 return (object)[
                     'success' => false,
-                    'message' => (isset($cardResult) && $cardResult->success === true)
+                    'message' => (isset($cardResult->id))
                         ? "Card with autopay stored but payment failed: " . $e->getMessage()
                         : "Card with autopay storage failed: " . $e->getMessage(),
                 ];
@@ -264,8 +264,8 @@ class AccountBillingController
         if ($saveAndMakeAuto === true) {
             try {
                 $cardResult = $this->createTokenizedCreditCard($accountID, $creditCard, true);
-                if ($cardResult->success !== true) {
-                    return $cardResult;
+                if (!isset($cardResult->id)) {
+                    return (object)['success' => false, 'message' => 'Card creation failed'];
                 }
 
                 $result = $this->makePaymentUsingExistingPaymentMethod(
@@ -278,7 +278,7 @@ class AccountBillingController
             } catch (Exception $e) {
                 return (object)[
                     'success' => false,
-                    'message' => (isset($cardResult) && $cardResult->success === true)
+                    'message' => (isset($cardResult->id))
                         ? "Card with autopay stored but payment failed: " . $e->getMessage()
                         : "Card with autopay storage failed: " . $e->getMessage(),
                 ];
