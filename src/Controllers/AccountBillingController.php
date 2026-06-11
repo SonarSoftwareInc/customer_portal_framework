@@ -13,6 +13,7 @@ use SonarSoftware\CustomerPortalFramework\Models\TokenizedCreditCard;
 class AccountBillingController
 {
     private $httpHelper;
+
     /**
      * AccountAuthenticationController constructor.
      */
@@ -148,9 +149,9 @@ class AccountBillingController
     /**
      * Get a list of unexpired credit cards on the account (see https://sonar.software/apidoc/index.html#api-Account_Payment_Methods-GetAccountPaymentMethods). This does not return CreditCard objects, but just the raw API return. This is because the credit card objects
      * don't really match up - we can't access the credit card number, for example. Same thing with bank accounts.
-     * @throws ApiException
      * @param $accountID
      * @return array
+     * @throws ApiException
      */
     public function getValidPaymentMethods($accountID)
     {
@@ -181,55 +182,74 @@ class AccountBillingController
      */
 
     /**
-     * Make a one time payment with a credit card and, optionally, save it as a future automatic payment method. This should not be used to pay with an existing payment method.
+     * Make a one time payment with a credit card and, optionally, save it as
+     * a future automatic payment method. This should not be used to pay with
+     * an existing payment method.
+     *
+     * Note: Return type varies based on saveAndMakeAuto flag:
+     * - saveAndMakeAuto=true: Returns response from /transactions/payments endpoint
+     * - saveAndMakeAuto=false: Returns response from /transactions/one_time_credit_card_payment endpoint
+     * On failure: Returns {success: false, message: string}
+     *
      * @param $accountID - The account ID in Sonar
      * @param CreditCard $creditCard - A CreditCard object
      * @param $amount - The amount in the currency used in Sonar as a float
      * @param bool $saveAndMakeAuto - If this is true, save the card if it successfully runs
+     * @param $payment_tracker_id - Optional tracker ID for the payment transaction
      * @return mixed
-     * @throws ApiException
      */
     public function makeCreditCardPayment($accountID, CreditCard $creditCard, $amount, $saveAndMakeAuto = false, $payment_tracker_id = null)
     {
-        $result = $this->httpHelper->post("/accounts/" . intval($accountID) . "/transactions/one_time_credit_card_payment", [
-            'number' => $creditCard->getNumber(),
-            'expiration_month' => $creditCard->getExpirationMonth(),
-            'expiration_year' => $creditCard->getExpirationYear(),
-            'amount' => trim($amount),
-            'name_on_account' => $creditCard->getName(),
-            'line1' => $creditCard->getLine1(),
-            'city' => $creditCard->getCity(),
-            'state' => $creditCard->getState(),
-            'zip' => $creditCard->getZip(),
-            'country' => $creditCard->getCountry(),
-            'cvc' => $creditCard->getCvc(),
-            'payment_tracker_id' => $payment_tracker_id,
-            'email_payment_receipt' => true,
-        ]);
-
-        if ($result->success === true && $saveAndMakeAuto === true)
-        {
+        if ($saveAndMakeAuto === true) {
             try {
-                $this->createCreditCard($accountID, $creditCard);
-            }
-            catch (Exception $e)
-            {
-                //Not much we can do here, the payment has already been run. Very unlikely payment will work and saving will fail.
-            }
-        }
-        unset($creditCard);
+                $cardResult = $this->createCreditCard($accountID, $creditCard, true);
+                if (!isset($cardResult->id)) {
+                    return (object)['success' => false, 'message' => 'Card creation failed'];
+                }
 
-        return $result;
+                // Use the same payment endpoint as existing payment methods
+                $result = $this->makePaymentUsingExistingPaymentMethod(
+                    $accountID,
+                    $cardResult->id,
+                    $amount,
+                    $payment_tracker_id
+                );
+                return $result;
+            } catch (Exception $e) {
+                return (object)[
+                    'success' => false,
+                    'message' => (isset($cardResult->id))
+                        ? "Card with autopay stored but payment failed: " . $e->getMessage()
+                        : "Card with autopay storage failed: " . $e->getMessage(),
+                ];
+            }
+        } else {
+            $result = $this->httpHelper->post("/accounts/" . intval($accountID) . "/transactions/one_time_credit_card_payment", [
+                'number' => $creditCard->getNumber(),
+                'expiration_month' => $creditCard->getExpirationMonth(),
+                'expiration_year' => $creditCard->getExpirationYear(),
+                'amount' => trim($amount),
+                'name_on_account' => $creditCard->getName(),
+                'line1' => $creditCard->getLine1(),
+                'city' => $creditCard->getCity(),
+                'state' => $creditCard->getState(),
+                'zip' => $creditCard->getZip(),
+                'country' => $creditCard->getCountry(),
+                'cvc' => $creditCard->getCvc(),
+                'payment_tracker_id' => $payment_tracker_id,
+                'email_payment_receipt' => true,
+            ]);
+            return $result;
+        }
     }
 
     /**
-     * Make a one time payment with a tokenized card and, optionally, save it as
-     * a future automatic payment method. This should not be used to pay with
-     * an existing payment method.
-     * @param $accountID - The account ID in Sonar
-     * @param TokenizedCreditCard $creditCard - A TokenizedCreditCard object
-     * @param $amount - The amount in the currency used in Sonar as a float
-     * @param bool $saveAndMakeAuto - If this is true, save the card if it successfully runs
+     * Make a payment with a tokenized card (see https://sonar.software/apidoc/index.html#api-Account_Transactions-PostAccountOneTimeTokenizedCreditCardPayment)
+     * @param $accountID
+     * @param TokenizedCreditCard $creditCard
+     * @param $amount
+     * @param bool $saveAndMakeAuto - If true, saves the card before charging; if false, charges one-time only
+     * @param $payment_tracker_id
      * @return mixed
      * @throws ApiException
      */
@@ -241,41 +261,53 @@ class AccountBillingController
         $payment_tracker_id = null
     )
     {
-        $result = $this->httpHelper->post(
-            "/accounts/" . intval($accountID) . "/transactions/one_time_tokenized_credit_card_payment",
-            [
-                'customer_profile_id' => $creditCard->getCustomerId(),
-                'credit_card_type' => strtoupper($creditCard->getCardType()),
-                'name_on_card' => $creditCard->getName(),
-                'token' => $creditCard->getToken(),
-                'expiration_month' => $creditCard->getExpirationMonth(),
-                'expiration_year' => $creditCard->getExpirationYear(),
-                'masked_number' => $creditCard->getIdentifier(),
-                'line1' => $creditCard->getLine1(),
-                'city' => $creditCard->getCity(),
-                'state' => $creditCard->getState(),
-                'zip' => $creditCard->getZip(),
-                'country' => $creditCard->getCountry(),
-                'amount' => trim($amount),
-                'payment_tracker_id' => $payment_tracker_id,
-                'email_payment_receipt' => true,
-            ]
-        );
-
-        if ($result->success === true && $saveAndMakeAuto === true)
-        {
+        if ($saveAndMakeAuto === true) {
             try {
-                $this->createTokenizedCreditCard($accountID, $creditCard);
-            }
-            catch (Exception $e)
-            {
-                // Not much we can do here, the payment has already been run.
-                // Very unlikely payment will work and saving will fail.
-            }
-        }
+                $cardResult = $this->createTokenizedCreditCard($accountID, $creditCard, true);
+                if (!isset($cardResult->id)) {
+                    return (object)['success' => false, 'message' => 'Card creation failed'];
+                }
 
-        return $result;
+                $result = $this->makePaymentUsingExistingPaymentMethod(
+                    $accountID,
+                    $cardResult->id,
+                    $amount,
+                    $payment_tracker_id
+                );
+                return $result;
+            } catch (Exception $e) {
+                return (object)[
+                    'success' => false,
+                    'message' => (isset($cardResult->id))
+                        ? "Card with autopay stored but payment failed: " . $e->getMessage()
+                        : "Card with autopay storage failed: " . $e->getMessage(),
+                ];
+            }
+        } else {
+            $result = $this->httpHelper->post(
+                "/accounts/" . intval($accountID) . "/transactions/one_time_tokenized_credit_card_payment",
+                [
+                    'customer_profile_id' => $creditCard->getCustomerId(),
+                    'credit_card_type' => strtoupper($creditCard->getCardType()),
+                    'name_on_card' => $creditCard->getName(),
+                    'token' => $creditCard->getToken(),
+                    'expiration_month' => $creditCard->getExpirationMonth(),
+                    'expiration_year' => $creditCard->getExpirationYear(),
+                    'masked_number' => $creditCard->getIdentifier(),
+                    'line1' => $creditCard->getLine1(),
+                    'city' => $creditCard->getCity(),
+                    'state' => $creditCard->getState(),
+                    'zip' => $creditCard->getZip(),
+                    'country' => $creditCard->getCountry(),
+                    'amount' => trim($amount),
+                    'payment_tracker_id' => $payment_tracker_id,
+                    'email_payment_receipt' => true,
+                ]
+            );
+            return $result;
+        }
     }
+
     /**
      * Make a payment using an existing payment method ID (see https://sonar.software/apidoc/index.html#api-Account_Transactions-PostAccountPayment)
      * @param $accountID
@@ -388,7 +420,7 @@ class AccountBillingController
     public function storePayPalPayment($accountID, $amount, $transactionID)
     {
         return $this->httpHelper->post("/accounts/" . intval($accountID) . "/transactions/paypal_payments", [
-            'amount' => number_format($amount,2,".",""),
+            'amount' => number_format($amount, 2, ".", ""),
             'transaction_id' => trim($transactionID),
             'email_payment_receipt' => true,
         ]);
